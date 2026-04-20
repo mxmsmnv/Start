@@ -1,0 +1,28 @@
+# Font files — committed only the woff2 subset, exclude ttf
+fontawesome/webfonts/*.ttf
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# PhpStorm / IntelliJ
+.idea/
+
+# VS Code
+.vscode/
+
+# Composer
+vendor/
+composer.lock
+
+# npm / Node (if any tooling added later)
+node_modules/
+package-lock.json
+
+# PHP error logs
+*.log
+
+# Temp / backup files
+*.bak
+*.tmp
+*~
