@@ -11,7 +11,14 @@ Personal quick-access dashboard for the ProcessWire admin. Replaces the default 
 - **Example button** — auto-populates with your installed Process modules and their icons from `getModuleInfo()`
 - **Widget on admin home** — compact link list shown on the default ProcessWire dashboard
 - **Access control** — `start-dashboard` permission, assignable to any role via Access → Roles
+- **Multilingual editor UI** — all interface labels translated into 12 languages
 - Mobile-friendly editor layout
+
+## Supported languages
+
+The editor interface is fully translated into: English, Russian, German, French, Spanish, Polish, Ukrainian, Italian, Dutch, Portuguese, Chinese, Japanese.
+
+The active language is selected under **Modules → Start → Admin language**.
 
 ## Requirements
 

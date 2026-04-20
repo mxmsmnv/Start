@@ -14,140 +14,141 @@
  */
 class Start extends Process implements Module, ConfigurableModule {
 
-	public static function getModuleInfo(): array {
-		return [
-			'title'      => 'Start',
-			'summary'    => 'Personal quick-access dashboard with visual link editor.',
-			'version'    => 100,
-			'author'     => 'Maxim Semenov',
-			'href'       => 'https://github.com/mxmsmnv/Start',
-			'icon'       => 'bookmark',
-			'requires'   => 'ProcessWire>=3.0.0',
-			'page'       => [
-				'name'   => 'start',
-				'parent' => 'setup',
-				'title'  => 'Start',
-			],
-			'permission' => 'start-dashboard',
-			'permissions' => [
-				'start-dashboard' => 'Access the Start dashboard',
-			],
-			'autoload'   => true,
-			'singular'   => true,
-		];
-	}
+  public static function getModuleInfo(): array {
+    return [
+      'title'      => 'Start',
+      'summary'    => 'Personal quick-access dashboard with visual link editor.',
+      'version'    => 110,
+      'author'     => 'Maxim Semenov',
+      'href'       => 'https://github.com/mxmsmnv/Start',
+      'icon'       => 'bookmark',
+      'requires'   => 'ProcessWire>=3.0.0',
+      'page'       => [
+        'name'   => 'start',
+        'parent' => 'setup',
+        'title'  => 'Start',
+      ],
+      'permission' => 'start-dashboard',
+      'permissions' => [
+        'start-dashboard' => 'Access the Start dashboard',
+      ],
+      'autoload'   => true,
+      'singular'   => true,
+    ];
+  }
 
-	// -------------------------------------------------------------------------
-	// Uninstall
-	// -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Uninstall
+  // -------------------------------------------------------------------------
 
-	public function ___uninstall(): void {
-		parent::___uninstall();
-	}
+  public function ___uninstall(): void {
+    parent::___uninstall();
+  }
 
-	// -------------------------------------------------------------------------
-	// Config defaults
-	// -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Config defaults
+  // -------------------------------------------------------------------------
 
-	public static function getDefaultData(): array {
-		return [
-			'links_json' => '',
-			'cols'       => 3,
-		];
-	}
+  public static function getDefaultData(): array {
+    return [
+      'links_json' => '',
+      'cols'       => 3,
+      'language'   => 'en',
+    ];
+  }
 
-	public function __construct() {
-		parent::__construct();
-		foreach (self::getDefaultData() as $k => $v) {
-			$this->$k = $v;
-		}
-	}
+  public function __construct() {
+    parent::__construct();
+    foreach (self::getDefaultData() as $k => $v) {
+      $this->$k = $v;
+    }
+  }
 
-	// -------------------------------------------------------------------------
-	// Autoload hooks
-	// -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Autoload hooks
+  // -------------------------------------------------------------------------
 
-	public function init(): void {
-		$this->addHookAfter('ProcessHome::execute', $this, 'hookHomeWidget');
-		$this->addHookBefore('ProcessHome::execute', $this, 'hookHomeHeadline');
-		// Remove breadcrumbs on Start pages — they add no value here
-		$this->addHookAfter('Page::render', $this, 'hookRemoveBreadcrumbs');
-	}
+  public function init(): void {
+    $this->addHookAfter('ProcessHome::execute', $this, 'hookHomeWidget');
+    $this->addHookBefore('ProcessHome::execute', $this, 'hookHomeHeadline');
+    // Remove breadcrumbs on Start pages — they add no value here
+    $this->addHookAfter('Page::render', $this, 'hookRemoveBreadcrumbs');
+  }
 
-	public function hookRemoveBreadcrumbs(HookEvent $event): void {
-		$page = $this->wire('page');
-		if (!$page || !in_array($page->name, ['start'])) return;
-		// Fuel breadcrumbs with empty array so PW renders nothing
-		$this->wire('breadcrumbs')->removeAll();
-	}
+  public function hookRemoveBreadcrumbs(HookEvent $event): void {
+    $page = $this->wire('page');
+    if (!$page || !in_array($page->name, ['start'])) return;
+    // Fuel breadcrumbs with empty array so PW renders nothing
+    $this->wire('breadcrumbs')->removeAll();
+  }
 
-	public function hookHomeHeadline(HookEvent $event): void {
-		/** @var ProcessHome $process */
-		$process = $event->object;
-		$process->headline($this->_('Start'));
-		$process->browserTitle($this->_('Start'));
-	}
+  public function hookHomeHeadline(HookEvent $event): void {
+    /** @var ProcessHome $process */
+    $process = $event->object;
+    $process->headline(self::t('start'));
+    $process->browserTitle(self::t('start'));
+  }
 
-	public function hookHomeWidget(HookEvent $event): void {
-		$links = $this->parseLinks();
-		if (empty($links)) return;
-		$event->return = $this->renderWidget($links) . $event->return;
-	}
+  public function hookHomeWidget(HookEvent $event): void {
+    $links = $this->parseLinks();
+    if (empty($links)) return;
+    $event->return = $this->renderWidget($links) . $event->return;
+  }
 
-	// -------------------------------------------------------------------------
-	// Process page — main view + PagePicker AJAX endpoint
-	// -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Process page — main view + PagePicker AJAX endpoint
+  // -------------------------------------------------------------------------
 
-	public function ___execute(): string {
-		// PagePicker AJAX endpoint — handled before any HTML output
-		if ($this->wire('input')->get('action') === 'pages') {
-			$picker = new StartPagePicker($this->wire('config')->urls->admin . 'setup/start/');
-			return $picker->ajax();
-		}
+  public function ___execute(): string {
+    // PagePicker AJAX endpoint — handled before any HTML output
+    if ($this->wire('input')->get('action') === 'pages') {
+      $picker = new StartPagePicker($this->wire('config')->urls->admin . 'setup/start/');
+      return $picker->ajax();
+    }
 
-		$links    = $this->parseLinks();
-		$cols     = max(2, min(6, (int) $this->cols));
-		$adminUrl = $this->wire('config')->urls->admin;
+    $links    = $this->parseLinks();
+    $cols     = max(2, min(6, (int) $this->cols));
+    $adminUrl = $this->wire('config')->urls->admin;
 
-		$this->headline($this->_('Start'));
-		// Load Font Awesome
-		$faUrl = $this->wire('config')->urls->{'Start'} . 'fontawesome/css/all.min.css';
-		$this->wire('config')->styles->add($faUrl);
+    $this->headline(self::t('start'));
+    // Load Font Awesome
+    $faUrl = $this->wire('config')->urls->{'Start'} . 'fontawesome/css/all.min.css';
+    $this->wire('config')->styles->add($faUrl);
 
-		$out = $this->renderStyles();
+    $out = $this->renderStyles();
 
-		// ── Toolbar: view-mode toggle only ────────────────────────────────────
-		$out .= '<div class="st-page-actions">';
-		$out .= '<div class="st-view-toggle" role="group" aria-label="' . $this->_('View mode') . '">';
-		$out .= '<button id="st-btn-list" class="st-active" onclick="stSetView(\'list\')" title="' . $this->_('List view') . '" aria-pressed="true">';
-		$out .= '<span uk-icon="icon:list;ratio:0.85"></span>';
-		$out .= '</button>';
-		$out .= '<button id="st-btn-icon" onclick="stSetView(\'icon\')" title="' . $this->_('Icon view') . '" aria-pressed="false">';
-		$out .= '<span uk-icon="icon:grid;ratio:0.85"></span>';
-		$out .= '</button>';
-		$out .= '</div>';
-		$out .= '</div>';
+    // ── Toolbar: view-mode toggle only ────────────────────────────────────
+    $out .= '<div class="st-page-actions">';
+    $out .= '<div class="st-view-toggle" role="group" aria-label="' . self::t('view_mode') . '">';
+    $out .= '<button id="st-btn-list" class="st-active" onclick="stSetView(\'list\')" title="' . self::t('list_view') . '" aria-pressed="true">';
+    $out .= '<span uk-icon="icon:list;ratio:0.85"></span>';
+    $out .= '</button>';
+    $out .= '<button id="st-btn-icon" onclick="stSetView(\'icon\')" title="' . self::t('icon_view') . '" aria-pressed="false">';
+    $out .= '<span uk-icon="icon:grid;ratio:0.85"></span>';
+    $out .= '</button>';
+    $out .= '</div>';
+    $out .= '</div>';
 
-		if (empty($links)) {
-			$out .= '<div class="uk-alert uk-alert-primary" uk-alert>';
-			$out .= '<p>' . sprintf(
-				$this->_('No links yet. %sConfigure links%s in module settings.'),
-				'<a href="' . $adminUrl . 'setup/start/edit/">',
-				'</a>'
-			) . '</p>';
-			$out .= '</div>';
-			return $out;
-		}
+    if (empty($links)) {
+      $out .= '<div class="uk-alert uk-alert-primary" uk-alert>';
+      $out .= '<p>' . sprintf(
+        self::t('no_links'),
+        '<a href="' . $adminUrl . 'setup/start/edit/">',
+        '</a>'
+      ) . '</p>';
+      $out .= '</div>';
+      return $out;
+    }
 
-		$out .= '<div id="st-main" class="st-groups-wrap" style="--st-cols:' . $cols . ';--st-icon-cols:' . $cols . '">';
-		$out .= $this->renderGroups($links, $cols);
-		$out .= '</div>';
-		// Footer with Edit Links — matches the footer pattern from other PW modules
-		$out .= '<div class="st-footer">';
-		$out .= '<a href="' . $adminUrl . 'setup/start/edit/" class="st-footer-edit">' . $this->_('Edit Links') . '</a>';
-		$out .= '</div>';
+    $out .= '<div id="st-main" class="st-groups-wrap" style="--st-cols:' . $cols . ';--st-icon-cols:' . $cols . '">';
+    $out .= $this->renderGroups($links, $cols);
+    $out .= '</div>';
+    // Footer with Edit Links — matches the footer pattern from other PW modules
+    $out .= '<div class="st-footer">';
+    $out .= '<a href="' . $adminUrl . 'setup/start/edit/" class="st-footer-edit">' . self::t('edit_links') . '</a>';
+    $out .= '</div>';
 
-		$out .= <<<JS
+    $out .= <<<JS
 <script>
 (function(){
   var STORAGE_KEY = 'st_view_mode';
@@ -175,204 +176,204 @@ class Start extends Process implements Module, ConfigurableModule {
 </script>
 JS;
 
-		return $out;
-	}
+    return $out;
+  }
 
-	// -------------------------------------------------------------------------
-	// Edit sub-page — visual link editor accessible from /setup/start/edit/
-	// -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Edit sub-page — visual link editor accessible from /setup/start/edit/
+  // -------------------------------------------------------------------------
 
-	public function ___executeEdit(): string {
-		$action = $this->wire('input')->get('action');
+  public function ___executeEdit(): string {
+    $action = $this->wire('input')->get('action');
 
-		// PagePicker AJAX endpoint
-		if ($action === 'pages') {
-			$picker = new StartPagePicker($this->wire('config')->urls->admin . 'setup/start/edit/');
-			return $picker->ajax();
-		}
+    // PagePicker AJAX endpoint
+    if ($action === 'pages') {
+      $picker = new StartPagePicker($this->wire('config')->urls->admin . 'setup/start/edit/');
+      return $picker->ajax();
+    }
 
-		// Installed Process modules AJAX — for Example button
-		if ($action === 'modules') {
-			if (!$this->wire('user')->isLoggedin()) {
-				$this->wire('config')->ajax = true;
-				header('Content-Type: application/json', true, 403);
-				return json_encode(['error' => 'Forbidden']);
-			}
-			$this->wire('config')->ajax = true;
-			header('Content-Type: application/json');
-			$adminUrl = $this->wire('config')->urls->admin;
+    // Installed Process modules AJAX — for Example button
+    if ($action === 'modules') {
+      if (!$this->wire('user')->isLoggedin()) {
+        $this->wire('config')->ajax = true;
+        header('Content-Type: application/json', true, 403);
+        return json_encode(['error' => 'Forbidden']);
+      }
+      $this->wire('config')->ajax = true;
+      header('Content-Type: application/json');
+      $adminUrl = $this->wire('config')->urls->admin;
 
-			// Get only installed Process modules that have their own admin page
-			$skip = ['Start', 'ProcessHome', 'ProcessLogin', 'ProcessProfile',
-			          'ProcessForgotPassword', 'ProcessPageSearch', 'ProcessPageAdd',
-			          'ProcessPageSort', 'ProcessPageEditLink', 'ProcessPageEditImageSelect',
-			          'ProcessRecentPages', 'ProcessPageTrash', 'ProcessPageList',
-			          'ProcessPageView', 'ProcessPageEdit'];
+      // Get only installed Process modules that have their own admin page
+      $skip = ['Start', 'ProcessHome', 'ProcessLogin', 'ProcessProfile',
+                'ProcessForgotPassword', 'ProcessPageSearch', 'ProcessPageAdd',
+                'ProcessPageSort', 'ProcessPageEditLink', 'ProcessPageEditImageSelect',
+                'ProcessRecentPages', 'ProcessPageTrash', 'ProcessPageList',
+                'ProcessPageView', 'ProcessPageEdit'];
 
-			$items = [];
-			foreach ($this->wire('modules')->findByPrefix('Process') as $info) {
-				$name = $info->className ?? (string)$info;
-				if (in_array($name, $skip)) continue;
+      $items = [];
+      foreach ($this->wire('modules')->findByPrefix('Process') as $info) {
+        $name = $info->className ?? (string)$info;
+        if (in_array($name, $skip)) continue;
 
-				// Only modules that declare a 'page' with a parent
-				$moduleInfo = $this->wire('modules')->getModuleInfoVerbose($name, ['verbose' => false]);
-				if (empty($moduleInfo['page']['name'])) continue;
+        // Only modules that declare a 'page' with a parent
+        $moduleInfo = $this->wire('modules')->getModuleInfoVerbose($name, ['verbose' => false]);
+        if (empty($moduleInfo['page']['name'])) continue;
 
-				// Find the actual page
-				$pageName   = $moduleInfo['page']['name'];
-				$parentName = $moduleInfo['page']['parent'] ?? 'setup';
-				$page = $this->wire('pages')->get("name=$pageName, template=admin, include=all");
-				if (!$page->id) continue;
+        // Find the actual page
+        $pageName   = $moduleInfo['page']['name'];
+        $parentName = $moduleInfo['page']['parent'] ?? 'setup';
+        $page = $this->wire('pages')->get("name=$pageName, template=admin, include=all");
+        if (!$page->id) continue;
 
-				$label = (string) $page->get('title|name');
-				// Get icon from module info — PW uses FontAwesome names without "fa-" prefix
-				$rawIcon = (string) $moduleInfo['icon'];
-				$icon = 'fa-' . (str_starts_with($rawIcon, 'fa-') ? substr($rawIcon, 3) : $rawIcon);
-				// Deduplicate by url
-				$url = $page->url;
-				if (!array_filter($items, function($i) use ($url){ return $i['url'] === $url; })) {
-					$items[] = ['label' => $label, 'url' => $url, 'name' => $pageName, 'icon' => $icon];
-				}
-			}
+        $label = (string) $page->get('title|name');
+        // Get icon from module info — PW uses FontAwesome names without "fa-" prefix
+        $rawIcon = (string) $moduleInfo['icon'];
+        $icon = 'fa-' . (str_starts_with($rawIcon, 'fa-') ? substr($rawIcon, 3) : $rawIcon);
+        // Deduplicate by url
+        $url = $page->url;
+        if (!array_filter($items, function($i) use ($url){ return $i['url'] === $url; })) {
+          $items[] = ['label' => $label, 'url' => $url, 'name' => $pageName, 'icon' => $icon];
+        }
+      }
 
-			// Sort alphabetically
-			usort($items, function($a, $b) { return strcmp($a['label'], $b['label']); });
+      // Sort alphabetically
+      usort($items, function($a, $b) { return strcmp($a['label'], $b['label']); });
 
-			return json_encode(['adminUrl' => $adminUrl, 'items' => $items]);
-		}
+      return json_encode(['adminUrl' => $adminUrl, 'items' => $items]);
+    }
 
-		$adminUrl = $this->wire('config')->urls->admin;
-		// Load Font Awesome
-		$faUrl = $this->wire('config')->urls->{'Start'} . 'fontawesome/css/all.min.css';
-		$this->wire('config')->styles->add($faUrl);
-		$this->headline($this->_('Edit Links'));
-		$this->browserTitle($this->_('Start — Edit Links'));
+    $adminUrl = $this->wire('config')->urls->admin;
+    // Load Font Awesome
+    $faUrl = $this->wire('config')->urls->{'Start'} . 'fontawesome/css/all.min.css';
+    $this->wire('config')->styles->add($faUrl);
+    $this->headline(self::t('edit_links'));
+    $this->browserTitle(self::t('edit_links_title'));
 
-		// ── Handle POST save ────────────────────────────────────────────────
-		if ($this->wire('input')->requestMethod('POST')) {
-			$linksJson = (string) $this->wire('input')->post('links_json');
-			$cols      = max(2, min(6, (int) $this->wire('input')->post('cols')));
+    // ── Handle POST save ────────────────────────────────────────────────
+    if ($this->wire('input')->requestMethod('POST')) {
+      $linksJson = (string) $this->wire('input')->post('links_json');
+      $cols      = max(2, min(6, (int) $this->wire('input')->post('cols')));
 
-			// Validate JSON
-			$decoded = json_decode($linksJson, true);
-			if (!is_array($decoded)) $linksJson = '';
+      // Validate JSON
+      $decoded = json_decode($linksJson, true);
+      if (!is_array($decoded)) $linksJson = '';
 
-			// Save to module config
-			$this->wire('modules')->saveConfig('Start', [
-				'links_json' => $linksJson,
-				'cols'       => $cols,
-			]);
+      // Save to module config
+      $this->wire('modules')->saveConfig('Start', [
+        'links_json' => $linksJson,
+        'cols'       => $cols,
+      ]);
 
-			$this->message($this->_('Links saved.'));
-			$this->wire('session')->redirect($adminUrl . 'setup/start/');
-			return '';
-		}
+      $this->message(self::t('links_saved'));
+      $this->wire('session')->redirect($adminUrl . 'setup/start/');
+      return '';
+    }
 
-		// ── Render editor ────────────────────────────────────────────────────
-		$data     = $this->wire('modules')->getModuleConfigData('Start');
-		$json     = (string) ($data['links_json'] ?? '');
-		$cols     = max(2, min(6, (int) ($data['cols'] ?? 3)));
-		$pickerUrl = $adminUrl . 'setup/start/edit/';
+    // ── Render editor ────────────────────────────────────────────────────
+    $data     = $this->wire('modules')->getModuleConfigData('Start');
+    $json     = (string) ($data['links_json'] ?? '');
+    $cols     = max(2, min(6, (int) ($data['cols'] ?? 3)));
+    $pickerUrl = $adminUrl . 'setup/start/edit/';
 
-		$out  = $this->renderStyles();
+    $out  = $this->renderStyles();
 
-		// Form — Back, Example, Clear all are in the footer next to Save
-		$out .= '<form method="post" action="' . $adminUrl . 'setup/start/edit/">';
-		$out .= $this->wire('session')->CSRF->renderInput();
-		$out .= '<input type="hidden" name="links_json" id="start_links_json" value="' . htmlspecialchars($json, ENT_QUOTES, 'UTF-8') . '">';
-		$out .= '<input type="hidden" name="cols" id="start_cols" value="' . $cols . '">';
-		$out .= self::buildEditorHTML($json, $cols, $pickerUrl);
-		$out .= self::buildEditorJS($json, $cols, $pickerUrl, $adminUrl);
-		// Footer: Back | Example | Clear all | Save
-		$out .= '<div class="st-edit-footer uk-margin-top">';
-		$out .= '<a href="' . $adminUrl . 'setup/start/" class="uk-button uk-button-default">' . $this->_('Back') . '</a>';
-		$out .= '<button type="button" class="uk-button uk-button-default" onclick="stLoadExample()">' . $this->_('Example') . '</button>';
-		$out .= '<button type="button" class="uk-button uk-button-secondary" onclick="stClearAll()">' . $this->_('Clear all') . '</button>';
-		$out .= '<button type="submit" class="uk-button uk-button-primary">' . $this->_('Save') . '</button>';
-		$out .= '</div>';
-		$out .= '</form>';
+    // Form — Back, Example, Clear all are in the footer next to Save
+    $out .= '<form method="post" action="' . $adminUrl . 'setup/start/edit/">';
+    $out .= $this->wire('session')->CSRF->renderInput();
+    $out .= '<input type="hidden" name="links_json" id="start_links_json" value="' . htmlspecialchars($json, ENT_QUOTES, 'UTF-8') . '">';
+    $out .= '<input type="hidden" name="cols" id="start_cols" value="' . $cols . '">';
+    $out .= self::buildEditorHTML($json, $cols, $pickerUrl);
+    $out .= self::buildEditorJS($json, $cols, $pickerUrl, $adminUrl);
+    // Footer: Back | Example | Clear all | Save
+    $out .= '<div class="st-edit-footer uk-margin-top">';
+    $out .= '<a href="' . $adminUrl . 'setup/start/" class="uk-button uk-button-default">' . self::t('back') . '</a>';
+    $out .= '<button type="button" class="uk-button uk-button-default" onclick="stLoadExample()">' . self::t('example') . '</button>';
+    $out .= '<button type="button" class="uk-button uk-button-secondary" onclick="stClearAll()">' . self::t('clear_all') . '</button>';
+    $out .= '<button type="submit" class="uk-button uk-button-primary">' . self::t('save') . '</button>';
+    $out .= '</div>';
+    $out .= '</form>';
 
-		$out .= '<script>if(window.UIkit)UIkit.update();</script>';
-		return $out;
-	}
+    $out .= '<script>if(window.UIkit)UIkit.update();</script>';
+    return $out;
+  }
 
-	// -------------------------------------------------------------------------
-	// Rendering
-	// -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Rendering
+  // -------------------------------------------------------------------------
 
-	protected function renderWidget(array $links): string {
-		$adminUrl = $this->wire('config')->urls->admin;
-		$cols     = max(2, min(6, (int) $this->cols));
-		$out  = $this->renderStyles();
-		$out .= '<div class="st-widget uk-card uk-card-default uk-card-body uk-margin-bottom" style="--st-cols:' . $cols . '">';
-		$out .= '<div class="st-widget-header uk-flex uk-flex-middle uk-flex-between uk-margin-small-bottom">';
-		$out .= '<span class="st-widget-title uk-text-bold uk-text-small">';
-		$out .= '<span uk-icon="icon:bolt;ratio:0.85" class="uk-margin-small-right"></span>';
-		$out .= $this->_('Start');
-		$out .= '</span>';
-		$out .= '<a href="' . $adminUrl . 'setup/start/" class="uk-link-muted uk-text-small">';
-		$out .= $this->_('View all') . ' <span uk-icon="icon:arrow-right;ratio:0.75"></span>';
-		$out .= '</a>';
-		$out .= '</div>';
-		$out .= $this->renderGroups($links, $cols);
-		$out .= '</div>';
-		return $out;
-	}
+  protected function renderWidget(array $links): string {
+    $adminUrl = $this->wire('config')->urls->admin;
+    $cols     = max(2, min(6, (int) $this->cols));
+    $out  = $this->renderStyles();
+    $out .= '<div class="st-widget uk-card uk-card-default uk-card-body uk-margin-bottom" style="--st-cols:' . $cols . '">';
+    $out .= '<div class="st-widget-header uk-flex uk-flex-middle uk-flex-between uk-margin-small-bottom">';
+    $out .= '<span class="st-widget-title uk-text-bold uk-text-small">';
+    $out .= '<span uk-icon="icon:bolt;ratio:0.85" class="uk-margin-small-right"></span>';
+    $out .= self::t('start');
+    $out .= '</span>';
+    $out .= '<a href="' . $adminUrl . 'setup/start/" class="uk-link-muted uk-text-small">';
+    $out .= self::t('view_all') . ' <span uk-icon="icon:arrow-right;ratio:0.75"></span>';
+    $out .= '</a>';
+    $out .= '</div>';
+    $out .= $this->renderGroups($links, $cols);
+    $out .= '</div>';
+    return $out;
+  }
 
-	protected function renderGroups(array $links, int $cols): string {
-		$out = '<div class="st-groups">';
-		foreach ($links as $group) {
-			$out .= '<div class="st-group">';
-			if (!empty($group['label'])) {
-				$out .= '<div class="uk-text-uppercase uk-text-muted uk-text-small st-group-label">';
-				$out .= $this->wire('sanitizer')->entities($group['label']);
-				$out .= '</div>';
-			}
-			$out .= '<div class="st-grid">';
-			foreach ($group['items'] as $item) {
-				$url    = $this->wire('sanitizer')->url($item['url'], ['allowRelative' => true]);
-				if (!$url) continue;
-				$label  = $this->wire('sanitizer')->entities($item['label']);
-				$iconName = ltrim($item['icon'] ?? 'link');
-				$target = !empty($item['external']) ? ' target="_blank" rel="noopener"' : '';
-				$out .= '<a href="' . $url . '" class="st-item uk-card uk-card-default"' . $target . '>';
-				$out .= '<span class="st-item-icon">' . $this->faIcon($iconName) . '</span>';
-				$out .= '<span class="st-item-label">' . $label . '</span>';
-				$out .= '</a>';
-			}
-			$out .= '</div>';
-			$out .= '</div>';
-		}
-		$out .= '</div>';
-		$out .= '<script>if(window.UIkit)UIkit.update();</script>';
-		return $out;
-	}
+  protected function renderGroups(array $links, int $cols): string {
+    $out = '<div class="st-groups">';
+    foreach ($links as $group) {
+      $out .= '<div class="st-group">';
+      if (!empty($group['label'])) {
+        $out .= '<div class="uk-text-uppercase uk-text-muted uk-text-small st-group-label">';
+        $out .= $this->wire('sanitizer')->entities($group['label']);
+        $out .= '</div>';
+      }
+      $out .= '<div class="st-grid">';
+      foreach ($group['items'] as $item) {
+        $url    = $this->wire('sanitizer')->url($item['url'], ['allowRelative' => true]);
+        if (!$url) continue;
+        $label  = $this->wire('sanitizer')->entities($item['label']);
+        $iconName = ltrim($item['icon'] ?? 'link');
+        $target = !empty($item['external']) ? ' target="_blank" rel="noopener"' : '';
+        $out .= '<a href="' . $url . '" class="st-item uk-card uk-card-default"' . $target . '>';
+        $out .= '<span class="st-item-icon">' . $this->faIcon($iconName) . '</span>';
+        $out .= '<span class="st-item-label">' . $label . '</span>';
+        $out .= '</a>';
+      }
+      $out .= '</div>';
+      $out .= '</div>';
+    }
+    $out .= '</div>';
+    $out .= '<script>if(window.UIkit)UIkit.update();</script>';
+    return $out;
+  }
 
-	/**
-	 * Render a Font Awesome icon tag.
-	 * Detects brand icons (fab) vs solid (fas) automatically.
-	 * $name can be a full FA class like "fa-github" or just "github".
-	 */
-	protected function faIcon(string $name, string $extraClass = ''): string {
-		static $brands = null;
-		if ($brands === null) {
-			$brands = array_flip(array_filter(
-				file(__DIR__ . '/fontawesome/brands.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)
-			));
-		}
-		$name = ltrim($name, ' ');
-		if (strpos($name, 'fa-') !== 0) $name = 'fa-' . $name;
-		$prefix = isset($brands[$name]) ? 'fab' : 'fas';
-		$cls = trim($prefix . ' fa-fw ' . $name . ($extraClass ? ' ' . $extraClass : ''));
-		return '<i class="' . $this->wire('sanitizer')->entities($cls) . '" aria-hidden="true"></i>';
-	}
+  /**
+   * Render a Font Awesome icon tag.
+   * Detects brand icons (fab) vs solid (fas) automatically.
+   * $name can be a full FA class like "fa-github" or just "github".
+   */
+  protected function faIcon(string $name, string $extraClass = ''): string {
+    static $brands = null;
+    if ($brands === null) {
+      $brands = array_flip(array_filter(
+        file(__DIR__ . '/fontawesome/brands.txt', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)
+      ));
+    }
+    $name = ltrim($name, ' ');
+    if (strpos($name, 'fa-') !== 0) $name = 'fa-' . $name;
+    $prefix = isset($brands[$name]) ? 'fab' : 'fas';
+    $cls = trim($prefix . ' fa-fw ' . $name . ($extraClass ? ' ' . $extraClass : ''));
+    return '<i class="' . $this->wire('sanitizer')->entities($cls) . '" aria-hidden="true"></i>';
+  }
 
-	private bool $stylesRendered = false;
+  private bool $stylesRendered = false;
 
-	protected function renderStyles(): string {
-		if ($this->stylesRendered) return '';
-		$this->stylesRendered = true;
-		return <<<HTML
+  protected function renderStyles(): string {
+    if ($this->stylesRendered) return '';
+    $this->stylesRendered = true;
+    return <<<HTML
 <style>
 /* Start module — layout only, no duplication of UIkit tokens */
 
@@ -442,61 +443,447 @@ JS;
 }
 </style>
 HTML;
-	}
+  }
 
-	// -------------------------------------------------------------------------
-	// JSON parser
-	// -------------------------------------------------------------------------
 
-	protected function parseLinks(): array {
-		$raw = trim((string) $this->links_json);
-		if (!$raw) return [];
-		$data = json_decode($raw, true);
-		if (!is_array($data)) return [];
+  // -------------------------------------------------------------------------
+  // Translations
+  // -------------------------------------------------------------------------
 
-		$groups = [];
-		foreach ($data as $group) {
-			if (empty($group['items']) || !is_array($group['items'])) continue;
-			$items = [];
-			foreach ($group['items'] as $item) {
-				if (empty($item['url']) || empty($item['label'])) continue;
-				$items[] = [
-					'label'    => (string) $item['label'],
-					'url'      => (string) $item['url'],
-					'icon'     => (string) ($item['icon'] ?? 'link'),
-					'external' => !empty($item['external']),
-				];
-			}
-			if (empty($items)) continue;
-			$groups[] = [
-				'label' => (string) ($group['label'] ?? ''),
-				'items' => $items,
-			];
-		}
-		return $groups;
-	}
+  const TRANSLATIONS = [
+    'en' => [
+      'start'           => 'Start',
+      'edit_links'      => 'Edit Links',
+      'edit_links_title'=> 'Start — Edit Links',
+      'view_mode'       => 'View mode',
+      'list_view'       => 'List view',
+      'icon_view'       => 'Icon view',
+      'view_all'        => 'View all',
+      'no_links'        => 'No links yet. %sConfigure links%s in module settings.',
+      'links_saved'     => 'Links saved.',
+      'back'            => 'Back',
+      'example'         => 'Example',
+      'clear_all'       => 'Clear all',
+      'save'            => 'Save',
+      'language_label'  => 'Admin language',
+      'language_desc'   => 'Language used for the Start dashboard interface.',
+      'add_link'        => '+ Add link',
+      'add_group'       => 'Add group',
+      'remove'          => 'Remove',
+      'remove_group'    => 'Remove group',
+      'browse_page'     => 'Browse pages',
+      'select_page'     => 'Select a page',
+      'select_icon'     => 'Select icon',
+      'columns'         => 'Columns',
+      'search_pages'    => 'Search pages…',
+      'loading'         => 'Loading…',
+    ],
+    'ru' => [
+      'start'           => 'Старт',
+      'edit_links'      => 'Редактировать ссылки',
+      'edit_links_title'=> 'Старт — Редактирование ссылок',
+      'view_mode'       => 'Вид',
+      'list_view'       => 'Список',
+      'icon_view'       => 'Иконки',
+      'view_all'        => 'Все ссылки',
+      'no_links'        => 'Ссылок нет. %sДобавьте ссылки%s в настройках модуля.',
+      'links_saved'     => 'Ссылки сохранены.',
+      'back'            => 'Назад',
+      'example'         => 'Пример',
+      'clear_all'       => 'Очистить',
+      'save'            => 'Сохранить',
+      'language_label'  => 'Язык интерфейса',
+      'language_desc'   => 'Язык панели Start.',
+      'add_link'        => '+ Добавить ссылку',
+      'add_group'       => 'Добавить группу',
+      'remove'          => 'Удалить',
+      'remove_group'    => 'Удалить группу',
+      'browse_page'     => 'Выбрать страницу',
+      'select_page'     => 'Выберите страницу',
+      'select_icon'     => 'Выбрать иконку',
+      'columns'         => 'Колонки',
+      'search_pages'    => 'Поиск страниц…',
+      'loading'         => 'Загрузка…',
+    ],
+    'de' => [
+      'start'           => 'Start',
+      'edit_links'      => 'Links bearbeiten',
+      'edit_links_title'=> 'Start — Links bearbeiten',
+      'view_mode'       => 'Ansicht',
+      'list_view'       => 'Listenansicht',
+      'icon_view'       => 'Symbolansicht',
+      'view_all'        => 'Alle anzeigen',
+      'no_links'        => 'Noch keine Links. %sLinks konfigurieren%s in den Moduleinstellungen.',
+      'links_saved'     => 'Links gespeichert.',
+      'back'            => 'Zurück',
+      'example'         => 'Beispiel',
+      'clear_all'       => 'Alles löschen',
+      'save'            => 'Speichern',
+      'language_label'  => 'Verwaltungssprache',
+      'language_desc'   => 'Sprache des Start-Dashboards.',
+      'add_link'        => '+ Link hinzufügen',
+      'add_group'       => 'Gruppe hinzufügen',
+      'remove'          => 'Entfernen',
+      'remove_group'    => 'Gruppe entfernen',
+      'browse_page'     => 'Seiten durchsuchen',
+      'select_page'     => 'Seite auswählen',
+      'select_icon'     => 'Symbol auswählen',
+      'columns'         => 'Spalten',
+      'search_pages'    => 'Seiten suchen…',
+      'loading'         => 'Laden…',
+    ],
+    'fr' => [
+      'start'           => 'Accueil',
+      'edit_links'      => 'Modifier les liens',
+      'edit_links_title'=> 'Accueil — Modifier les liens',
+      'view_mode'       => 'Vue',
+      'list_view'       => 'Vue liste',
+      'icon_view'       => 'Vue icônes',
+      'view_all'        => 'Voir tout',
+      'no_links'        => 'Aucun lien. %sConfigurer les liens%s dans les paramètres.',
+      'links_saved'     => 'Liens enregistrés.',
+      'back'            => 'Retour',
+      'example'         => 'Exemple',
+      'clear_all'       => 'Tout effacer',
+      'save'            => 'Enregistrer',
+      'language_label'  => "Langue d'administration",
+      'language_desc'   => 'Langue utilisée pour le tableau de bord Start.',
+      'add_link'        => '+ Ajouter un lien',
+      'add_group'       => 'Ajouter un groupe',
+      'remove'          => 'Supprimer',
+      'remove_group'    => 'Supprimer le groupe',
+      'browse_page'     => 'Parcourir les pages',
+      'select_page'     => 'Sélectionner une page',
+      'select_icon'     => 'Choisir une icône',
+      'columns'         => 'Colonnes',
+      'search_pages'    => 'Rechercher des pages…',
+      'loading'         => 'Chargement…',
+    ],
+    'es' => [
+      'start'           => 'Inicio',
+      'edit_links'      => 'Editar enlaces',
+      'edit_links_title'=> 'Inicio — Editar enlaces',
+      'view_mode'       => 'Vista',
+      'list_view'       => 'Vista lista',
+      'icon_view'       => 'Vista iconos',
+      'view_all'        => 'Ver todo',
+      'no_links'        => 'Sin enlaces. %sConfigurar enlaces%s en la configuración.',
+      'links_saved'     => 'Enlaces guardados.',
+      'back'            => 'Volver',
+      'example'         => 'Ejemplo',
+      'clear_all'       => 'Borrar todo',
+      'save'            => 'Guardar',
+      'language_label'  => 'Idioma de administración',
+      'language_desc'   => 'Idioma del panel de control Start.',
+      'add_link'        => '+ Añadir enlace',
+      'add_group'       => 'Añadir grupo',
+      'remove'          => 'Eliminar',
+      'remove_group'    => 'Eliminar grupo',
+      'browse_page'     => 'Explorar páginas',
+      'select_page'     => 'Seleccionar una página',
+      'select_icon'     => 'Seleccionar icono',
+      'columns'         => 'Columnas',
+      'search_pages'    => 'Buscar páginas…',
+      'loading'         => 'Cargando…',
+    ],
+    'pl' => [
+      'start'           => 'Start',
+      'edit_links'      => 'Edytuj linki',
+      'edit_links_title'=> 'Start — Edytuj linki',
+      'view_mode'       => 'Widok',
+      'list_view'       => 'Widok listy',
+      'icon_view'       => 'Widok ikon',
+      'view_all'        => 'Zobacz wszystko',
+      'no_links'        => 'Brak linków. %sSkonfiguruj linki%s w ustawieniach modułu.',
+      'links_saved'     => 'Linki zapisane.',
+      'back'            => 'Wstecz',
+      'example'         => 'Przykład',
+      'clear_all'       => 'Wyczyść wszystko',
+      'save'            => 'Zapisz',
+      'language_label'  => 'Język administracji',
+      'language_desc'   => 'Język używany w panelu Start.',
+      'add_link'        => '+ Dodaj link',
+      'add_group'       => 'Dodaj grupę',
+      'remove'          => 'Usuń',
+      'remove_group'    => 'Usuń grupę',
+      'browse_page'     => 'Przeglądaj strony',
+      'select_page'     => 'Wybierz stronę',
+      'select_icon'     => 'Wybierz ikonę',
+      'columns'         => 'Kolumny',
+      'search_pages'    => 'Szukaj stron…',
+      'loading'         => 'Ładowanie…',
+    ],
+    'uk' => [
+      'start'           => 'Старт',
+      'edit_links'      => 'Редагувати посилання',
+      'edit_links_title'=> 'Старт — Редагування посилань',
+      'view_mode'       => 'Вигляд',
+      'list_view'       => 'Список',
+      'icon_view'       => 'Іконки',
+      'view_all'        => 'Усі посилання',
+      'no_links'        => 'Посилань немає. %sДодайте посилання%s у налаштуваннях модуля.',
+      'links_saved'     => 'Посилання збережено.',
+      'back'            => 'Назад',
+      'example'         => 'Приклад',
+      'clear_all'       => 'Очистити',
+      'save'            => 'Зберегти',
+      'language_label'  => 'Мова інтерфейсу',
+      'language_desc'   => 'Мова панелі Start.',
+      'add_link'        => '+ Додати посилання',
+      'add_group'       => 'Додати групу',
+      'remove'          => 'Видалити',
+      'remove_group'    => 'Видалити групу',
+      'browse_page'     => 'Переглянути сторінки',
+      'select_page'     => 'Оберіть сторінку',
+      'select_icon'     => 'Обрати іконку',
+      'columns'         => 'Колонки',
+      'search_pages'    => 'Пошук сторінок…',
+      'loading'         => 'Завантаження…',
+    ],
+    'it' => [
+      'start'           => 'Inizio',
+      'edit_links'      => 'Modifica link',
+      'edit_links_title'=> 'Inizio — Modifica link',
+      'view_mode'       => 'Vista',
+      'list_view'       => 'Vista elenco',
+      'icon_view'       => 'Vista icone',
+      'view_all'        => 'Vedi tutto',
+      'no_links'        => 'Nessun link. %sConfigura i link%s nelle impostazioni.',
+      'links_saved'     => 'Link salvati.',
+      'back'            => 'Indietro',
+      'example'         => 'Esempio',
+      'clear_all'       => 'Cancella tutto',
+      'save'            => 'Salva',
+      'language_label'  => 'Lingua di amministrazione',
+      'language_desc'   => 'Lingua utilizzata per il pannello Start.',
+      'add_link'        => '+ Aggiungi link',
+      'add_group'       => 'Aggiungi gruppo',
+      'remove'          => 'Rimuovi',
+      'remove_group'    => 'Rimuovi gruppo',
+      'browse_page'     => 'Sfoglia pagine',
+      'select_page'     => 'Seleziona una pagina',
+      'select_icon'     => 'Seleziona icona',
+      'columns'         => 'Colonne',
+      'search_pages'    => 'Cerca pagine…',
+      'loading'         => 'Caricamento…',
+    ],
+    'nl' => [
+      'start'           => 'Start',
+      'edit_links'      => 'Links bewerken',
+      'edit_links_title'=> 'Start — Links bewerken',
+      'view_mode'       => 'Weergave',
+      'list_view'       => 'Lijstweergave',
+      'icon_view'       => 'Icoonsweergave',
+      'view_all'        => 'Alles bekijken',
+      'no_links'        => 'Geen links. %sLinks configureren%s in de instellingen.',
+      'links_saved'     => 'Links opgeslagen.',
+      'back'            => 'Terug',
+      'example'         => 'Voorbeeld',
+      'clear_all'       => 'Alles wissen',
+      'save'            => 'Opslaan',
+      'language_label'  => 'Beheertaal',
+      'language_desc'   => 'Taal voor het Start-dashboard.',
+      'add_link'        => '+ Link toevoegen',
+      'add_group'       => 'Groep toevoegen',
+      'remove'          => 'Verwijderen',
+      'remove_group'    => 'Groep verwijderen',
+      'browse_page'     => "Pagina's bladeren",
+      'select_page'     => 'Selecteer een pagina',
+      'select_icon'     => 'Pictogram selecteren',
+      'columns'         => 'Kolommen',
+      'search_pages'    => "Pagina's zoeken…",
+      'loading'         => 'Laden…',
+    ],
+    'pt' => [
+      'start'           => 'Início',
+      'edit_links'      => 'Editar links',
+      'edit_links_title'=> 'Início — Editar links',
+      'view_mode'       => 'Vista',
+      'list_view'       => 'Vista em lista',
+      'icon_view'       => 'Vista em ícones',
+      'view_all'        => 'Ver tudo',
+      'no_links'        => 'Sem links. %sConfigurar links%s nas definições.',
+      'links_saved'     => 'Links guardados.',
+      'back'            => 'Voltar',
+      'example'         => 'Exemplo',
+      'clear_all'       => 'Limpar tudo',
+      'save'            => 'Guardar',
+      'language_label'  => 'Idioma de administração',
+      'language_desc'   => 'Idioma do painel Start.',
+      'add_link'        => '+ Adicionar link',
+      'add_group'       => 'Adicionar grupo',
+      'remove'          => 'Remover',
+      'remove_group'    => 'Remover grupo',
+      'browse_page'     => 'Navegar páginas',
+      'select_page'     => 'Selecionar uma página',
+      'select_icon'     => 'Selecionar ícone',
+      'columns'         => 'Colunas',
+      'search_pages'    => 'Pesquisar páginas…',
+      'loading'         => 'A carregar…',
+    ],
+    'zh' => [
+      'start'           => '开始',
+      'edit_links'      => '编辑链接',
+      'edit_links_title'=> '开始 — 编辑链接',
+      'view_mode'       => '视图',
+      'list_view'       => '列表视图',
+      'icon_view'       => '图标视图',
+      'view_all'        => '查看全部',
+      'no_links'        => '暂无链接。%s配置链接%s请前往模块设置。',
+      'links_saved'     => '链接已保存。',
+      'back'            => '返回',
+      'example'         => '示例',
+      'clear_all'       => '清除全部',
+      'save'            => '保存',
+      'language_label'  => '管理语言',
+      'language_desc'   => '用于 Start 仪表盘的语言。',
+      'add_link'        => '+ 添加链接',
+      'add_group'       => '添加分组',
+      'remove'          => '删除',
+      'remove_group'    => '删除分组',
+      'browse_page'     => '浏览页面',
+      'select_page'     => '选择页面',
+      'select_icon'     => '选择图标',
+      'columns'         => '列数',
+      'search_pages'    => '搜索页面…',
+      'loading'         => '加载中…',
+    ],
+    'ja' => [
+      'start'           => 'スタート',
+      'edit_links'      => 'リンクを編集',
+      'edit_links_title'=> 'スタート — リンクを編集',
+      'view_mode'       => '表示',
+      'list_view'       => 'リスト表示',
+      'icon_view'       => 'アイコン表示',
+      'view_all'        => 'すべて表示',
+      'no_links'        => 'リンクがありません。%sリンクを設定%sしてください。',
+      'links_saved'     => 'リンクを保存しました。',
+      'back'            => '戻る',
+      'example'         => '例',
+      'clear_all'       => 'すべてクリア',
+      'save'            => '保存',
+      'language_label'  => '管理言語',
+      'language_desc'   => 'Startダッシュボードの言語。',
+      'add_link'        => '+ リンクを追加',
+      'add_group'       => 'グループを追加',
+      'remove'          => '削除',
+      'remove_group'    => 'グループを削除',
+      'browse_page'     => 'ページを参照',
+      'select_page'     => 'ページを選択',
+      'select_icon'     => 'アイコンを選択',
+      'columns'         => '列数',
+      'search_pages'    => 'ページを検索…',
+      'loading'         => '読み込み中…',
+    ],
+  ];
 
-	// -------------------------------------------------------------------------
-	// Module config — visual editor
-	// -------------------------------------------------------------------------
+  /**
+   * Return a translated UI string for the current configured language.
+   * Falls back to English if the key or language is not found.
+   */
+  public static function t(string $key): string {
+    $lang = 'en';
+    try {
+      $cfg = wire('modules')->getModuleConfigData('Start');
+      if (!empty($cfg['language'])) $lang = $cfg['language'];
+    } catch (\Throwable $e) {}
+    if (!isset(self::TRANSLATIONS[$lang])) $lang = 'en';
+    return self::TRANSLATIONS[$lang][$key] ?? self::TRANSLATIONS['en'][$key] ?? $key;
+  }
 
-	public function getModuleConfigInputfields(array $data): InputfieldWrapper {
-		// Editor lives at /setup/start/edit/ — redirect there from module config page
-		$editUrl = wire('config')->urls->admin . 'setup/start/edit/';
-		wire('session')->redirect($editUrl);
-		return new InputfieldWrapper(); // never reached
-	}
+  // -------------------------------------------------------------------------
+  // JSON parser
+  // -------------------------------------------------------------------------
 
-	protected static function buildEditorHTML(string $json, int $cols, string $pickerUrl = ''): string {
-		$jsonAttr  = htmlspecialchars($json ?: '[]', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-		$colsInt   = (int) max(2, min(6, $cols));
-		if (!$pickerUrl) {
-			$pickerUrl = wire('config')->urls->admin . 'setup/start/edit/';
-		}
-		$pickerUrl    = htmlspecialchars($pickerUrl, ENT_QUOTES, 'UTF-8');
-		$adminUrlAttr = htmlspecialchars(wire('config')->urls->admin, ENT_QUOTES, 'UTF-8');
+  protected function parseLinks(): array {
+    $raw = trim((string) $this->links_json);
+    if (!$raw) return [];
+    $data = json_decode($raw, true);
+    if (!is_array($data)) return [];
 
-		return <<<HTML
+    $groups = [];
+    foreach ($data as $group) {
+      if (empty($group['items']) || !is_array($group['items'])) continue;
+      $items = [];
+      foreach ($group['items'] as $item) {
+        if (empty($item['url']) || empty($item['label'])) continue;
+        $items[] = [
+          'label'    => (string) $item['label'],
+          'url'      => (string) $item['url'],
+          'icon'     => (string) ($item['icon'] ?? 'link'),
+          'external' => !empty($item['external']),
+        ];
+      }
+      if (empty($items)) continue;
+      $groups[] = [
+        'label' => (string) ($group['label'] ?? ''),
+        'items' => $items,
+      ];
+    }
+    return $groups;
+  }
+
+  // -------------------------------------------------------------------------
+  // Module config — visual editor
+  // -------------------------------------------------------------------------
+
+  public function getModuleConfigInputfields(array $data): InputfieldWrapper {
+    $data    = array_merge(self::getDefaultData(), $data);
+    $modules = wire('modules');
+    $wrapper = new InputfieldWrapper();
+
+    /** @var InputfieldSelect $f */
+    $f = $modules->get('InputfieldSelect');
+    $f->attr('name', 'language');
+    $f->label       = self::t('language_label');
+    $f->description = self::t('language_desc');
+    $options = [
+      'en' => 'English',    'de' => 'Deutsch',    'fr' => 'Français',
+      'es' => 'Español',    'it' => 'Italiano',   'nl' => 'Nederlands',
+      'pt' => 'Português',  'pl' => 'Polski',      'ru' => 'Русский',
+      'uk' => 'Українська', 'zh' => '中文',         'ja' => '日本語',
+    ];
+    foreach ($options as $code => $label) $f->addOption($code, $label);
+    $f->attr('value', $data['language'] ?? 'en');
+    $wrapper->add($f);
+
+    // Redirect to visual editor for the rest of the config
+    /** @var InputfieldMarkup $fm */
+    $fm = $modules->get('InputfieldMarkup');
+    $fm->label = self::t('edit_links');
+    $fm->value = '<p><a href="' . wire('config')->urls->admin . 'setup/start/edit/" class="uk-button uk-button-default">'
+               . self::t('edit_links') . ' →</a></p>';
+    $wrapper->add($fm);
+
+    return $wrapper;
+  }
+
+  protected static function buildEditorHTML(string $json, int $cols, string $pickerUrl = ''): string {
+    $jsonAttr  = htmlspecialchars($json ?: '[]', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $colsInt   = (int) max(2, min(6, $cols));
+    if (!$pickerUrl) {
+      $pickerUrl = wire('config')->urls->admin . 'setup/start/edit/';
+    }
+    $pickerUrl    = htmlspecialchars($pickerUrl, ENT_QUOTES, 'UTF-8');
+    $adminUrlAttr = htmlspecialchars(wire('config')->urls->admin, ENT_QUOTES, 'UTF-8');
+    $i18nJson     = json_encode([
+      'add_link'    => self::t('add_link'),
+      'add_group'   => self::t('add_group'),
+      'remove'      => self::t('remove'),
+      'remove_group'=> self::t('remove_group'),
+      'browse_page' => self::t('browse_page'),
+      'select_page' => self::t('select_page'),
+      'select_icon' => self::t('select_icon'),
+      'columns'     => self::t('columns'),
+      'example'     => self::t('example'),
+      'search_pages'=> self::t('search_pages'),
+      'loading'     => self::t('loading'),
+    ], JSON_UNESCAPED_UNICODE);
+    $tColumns     = self::t('columns');
+    $tSelectIcon  = self::t('select_icon');
+    $tAddGroup    = self::t('add_group');
+
+    return <<<HTML
 <style>
 /* Start editor — only layout UIkit cannot provide */
 .st-grp{margin-bottom:6px}
@@ -563,7 +950,7 @@ HTML;
 
   <div class="st-editor-toolbar uk-margin-small-bottom">
     <div class="uk-flex uk-flex-middle" style="gap:10px">
-      <label class="uk-form-label uk-text-small uk-margin-remove">Columns</label>
+      <label class="uk-form-label uk-text-small uk-margin-remove">{$tColumns}</label>
       <input class="uk-range" type="range" id="st-cols-range" min="2" max="6" value="{$colsInt}" step="1" style="flex:1;max-width:160px" oninput="stSetCols(this.value)">
       <span class="uk-badge" id="st-cols-val">{$colsInt}</span>
     </div>
@@ -573,7 +960,7 @@ HTML;
   <div id="st-groups" class="uk-margin-small-bottom"></div>
 
   <button type="button" class="st-add-btn" onclick="stAddGroup()">
-    Add group
+    {$tAddGroup}
   </button>
 
   <div class="uk-card uk-card-default uk-card-small uk-card-body uk-margin-small-top">
@@ -587,7 +974,7 @@ HTML;
 <div id="st-icon-popup">
   <div id="st-icon-box">
     <div id="st-icon-box-head">
-      <strong>Select icon</strong>
+      <strong>{$tSelectIcon}</strong>
       <button type="button" id="st-icon-close">&#215;</button>
     </div>
     <div id="st-icon-search-wrap">
@@ -599,21 +986,35 @@ HTML;
 </div>
 
 HTML;
-	}
+  }
 
-	protected static function buildEditorJS(string $json, int $cols, string $pickerUrl = '', string $adminUrl = ''): string {
-		$colsInt   = (int) max(2, min(6, $cols));
-		if (!$pickerUrl) {
-			$pickerUrl = wire('config')->urls->admin . 'setup/start/edit/';
-		}
-		$pickerUrl = htmlspecialchars($pickerUrl, ENT_QUOTES, 'UTF-8');
-		if (!$adminUrl) {
-			$adminUrl = wire('config')->urls->admin;
-		}
-		$adminUrlAttr = htmlspecialchars($adminUrl, ENT_QUOTES, 'UTF-8');
-		$jsonAttr  = htmlspecialchars($json ?: '[]', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-		return <<<HTML
+  protected static function buildEditorJS(string $json, int $cols, string $pickerUrl = '', string $adminUrl = ''): string {
+    $colsInt   = (int) max(2, min(6, $cols));
+    if (!$pickerUrl) {
+      $pickerUrl = wire('config')->urls->admin . 'setup/start/edit/';
+    }
+    $pickerUrl = htmlspecialchars($pickerUrl, ENT_QUOTES, 'UTF-8');
+    if (!$adminUrl) {
+      $adminUrl = wire('config')->urls->admin;
+    }
+    $adminUrlAttr = htmlspecialchars($adminUrl, ENT_QUOTES, 'UTF-8');
+    $jsonAttr  = htmlspecialchars($json ?: '[]', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $i18nJson  = json_encode([
+      'add_link'    => self::t('add_link'),
+      'add_group'   => self::t('add_group'),
+      'remove'      => self::t('remove'),
+      'remove_group'=> self::t('remove_group'),
+      'browse_page' => self::t('browse_page'),
+      'select_page' => self::t('select_page'),
+      'select_icon' => self::t('select_icon'),
+      'columns'     => self::t('columns'),
+      'example'     => self::t('example'),
+      'search_pages'=> self::t('search_pages'),
+      'loading'     => self::t('loading'),
+    ], JSON_UNESCAPED_UNICODE);
+    return <<<HTML
 <script>
+window.stI18n = {$i18nJson};
 // StartPagePicker — JS class, instantiated by the editor when needed
 (function(global){
 function StartPagePicker(baseUrl, onSelect){
@@ -659,9 +1060,9 @@ StartPagePicker.prototype._build = function(){
       '</style>',
       '<div id="ppk-modal">',
       '  <div id="ppk-box">',
-      '    <div id="ppk-head">Select a page<button id="ppk-close">&#215;</button></div>',
-      '    <div id="ppk-search"><input type="text" id="ppk-q" placeholder="Search pages\u2026" autocomplete="off"></div>',
-      '    <div id="ppk-tree"><div class="ppk-loading">Loading\u2026</div></div>',
+      '    <div id="ppk-head">'+(window.stI18n&&stI18n.select_page||'Select a page')+'<button id="ppk-close">&#215;</button></div>',
+      '    <div id="ppk-search"><input type="text" id="ppk-q" placeholder="'+(window.stI18n&&stI18n.search_pages||'Search pages\u2026')+'" autocomplete="off"></div>',
+      '    <div id="ppk-tree"><div class="ppk-loading">'+(window.stI18n&&stI18n.loading||'Loading\u2026')+'</div></div>',
       '  </div>',
       '</div>'
     ].join('');
@@ -706,7 +1107,7 @@ StartPagePicker.prototype.close_ = function(){
 StartPagePicker.prototype._loadTree = function(parentId, container){
   var self = this;
   var el = container || this.tree;
-  el.innerHTML = '<div class="ppk-loading">Loading\u2026</div>';
+  el.innerHTML = '<div class="ppk-loading">'+(window.stI18n&&stI18n.loading||'Loading\u2026')+'</div>';
   fetch(this.baseUrl + '?action=pages&parent_id=' + parentId, {
     headers: {'X-Requested-With':'XMLHttpRequest'}
   }).then(function(r){return r.json();})
@@ -778,6 +1179,7 @@ global.StartPagePicker = StartPagePicker;
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
+window.stI18n = {$i18nJson};
 (function(){
 var editorEl   = document.getElementById('st-editor');
 var state      = {cols:{$colsInt},groups:[]};
@@ -960,7 +1362,7 @@ function guessIcon(name, url){
 
 function stLoadExample(){
   var btn = document.querySelector('[onclick="stLoadExample()"]');
-  if(btn){ btn.disabled=true; btn.textContent='Loading…'; }
+  if(btn){ btn.disabled=true; btn.textContent=stI18n.loading; }
 
   fetch(pickerUrl + '?action=modules', {headers:{'X-Requested-With':'XMLHttpRequest'}})
     .then(function(r){return r.json();})
@@ -996,7 +1398,7 @@ function stLoadExample(){
       render();
     })
     .finally(function(){
-      if(btn){ btn.disabled=false; btn.textContent='Example'; }
+      if(btn){ btn.disabled=false; btn.textContent=stI18n.example; }
     });
 }
 window.stLoadExample=stLoadExample;
@@ -1023,7 +1425,7 @@ function render(){
     hdr.innerHTML=''
       +'<span class="st-grp-handle uk-text-muted" title="Drag to reorder" uk-icon="icon:menu;ratio:0.7"></span>'
       +'<input class="uk-input st-grp-name" placeholder="Group name (e.g. Content)" value="'+esc(g.label)+'" oninput="stUpdateGroup(\''+g.id+'\',\'label\',this.value)">'
-      +'<button type="button" class="st-icon-btn st-icon-btn-danger" onclick="stRemoveGroup(\''+g.id+'\')" title="Remove group">'
+      +'<button type="button" class="st-icon-btn st-icon-btn-danger" onclick="stRemoveGroup(\''+g.id+'\')" title="'+stI18n.remove_group+'">'
       +'<span uk-icon="icon:close;ratio:0.7"></span>'
       +'</button>';
     gDiv.appendChild(hdr);
@@ -1053,10 +1455,10 @@ function render(){
         +'<input type="checkbox"'+(item.external?' checked':'')+' class="uk-checkbox" onchange="stUpdateItem(\''+g.id+'\',\''+item.id+'\',\'external\',this.checked)">'
         +'<span class="uk-text-small uk-text-muted">ext</span>'
         +'</label>'
-        +'<button type="button" class="st-icon-btn" title="Browse pages" data-url-input="'+urlInputId+'-url">'
+        +'<button type="button" class="st-icon-btn" title="'+stI18n.browse_page+'" data-url-input="'+urlInputId+'-url">'
         +'<span uk-icon="icon:folder;ratio:0.9"></span>'
         +'</button>'
-        +'<button type="button" class="st-icon-btn st-icon-btn-danger" onclick="stRemoveItem(\''+g.id+'\',\''+item.id+'\')" title="Remove">'
+        +'<button type="button" class="st-icon-btn st-icon-btn-danger" onclick="stRemoveItem(\''+g.id+'\',\''+item.id+'\')" title="'+stI18n.remove+'">'
         +'<span uk-icon="icon:close;ratio:0.7"></span>'
         +'</button>'
         +'</div>';
@@ -1075,7 +1477,7 @@ function render(){
     var addBtn=document.createElement('button');
     addBtn.type='button';
     addBtn.className='st-add-btn';
-    addBtn.textContent='+ Add link';
+    addBtn.textContent=stI18n.add_link;
     addBtn.onclick=function(){stAddItem(g.id);};
     itemsDiv.appendChild(addBtn);
 
@@ -1135,7 +1537,7 @@ render();
 })();
 </script>
 HTML;
-	}
+  }
 }
 
 // =============================================================================
@@ -1146,97 +1548,100 @@ HTML;
 
 class StartPagePicker
 {
-	protected string $modalId  = 'ppk-modal';
-	protected string $treeId   = 'ppk-tree';
-	protected string $searchId = 'ppk-q';
-	protected string $closeId  = 'ppk-close';
+  protected string $modalId  = 'ppk-modal';
+  protected string $treeId   = 'ppk-tree';
+  protected string $searchId = 'ppk-q';
+  protected string $closeId  = 'ppk-close';
 
-	protected string $baseUrl;
+  protected string $baseUrl;
 
-	protected array $excludePaths = [
-		'/trash/',
-		'/repeater_',
-		'/repeaters/',
-		'for-field-',
-		'for-page-',
-	];
+  protected array $excludePaths = [
+    '/trash/',
+    '/repeater_',
+    '/repeaters/',
+    'for-field-',
+    'for-page-',
+  ];
 
-	public function __construct(string $baseUrl)
-	{
-		$this->baseUrl = rtrim($baseUrl, '/') . '/';
-		// Admin pages are intentionally included — user may want to link to admin sections
-	}
+  public function __construct(string $baseUrl)
+  {
+    $this->baseUrl = rtrim($baseUrl, '/') . '/';
+    // Admin pages are intentionally included — user may want to link to admin sections
+  }
 
-	// ── AJAX ────────────────────────────────────────────────────────
+  // ── AJAX ────────────────────────────────────────────────────────
 
-	public function ajax(): string
-	{
-		/** @var User $user */
-		$user = wire('user');
-		if (!$user->isLoggedin()) {
-			wire('config')->ajax = true;
-			header('Content-Type: application/json', true, 403);
-			return json_encode(['error' => 'Forbidden']);
-		}
+  public function ajax(): string
+  {
+    /** @var User $user */
+    $user = wire('user');
+    if (!$user->isLoggedin()) {
+      wire('config')->ajax = true;
+      header('Content-Type: application/json', true, 403);
+      return json_encode(['error' => 'Forbidden']);
+    }
 
-		wire('config')->ajax = true;
-		header('Content-Type: application/json');
+    wire('config')->ajax = true;
+    header('Content-Type: application/json');
 
-		$q  = trim((string) wire('input')->get->q);
-		$pw = wire('pages');
+    $q  = trim((string) wire('input')->get->q);
+    $pw = wire('pages');
 
-		if ($q !== '') {
-			$qSafe    = wire('sanitizer')->selectorValue($q);
-			$selector = "title|name%=$qSafe, limit=80, include=all, sort=title";
-		} else {
-			$parentId = (int) wire('input')->get('parent_id');
-			$parentId = $parentId > 0 ? $parentId : 1;
-			$selector = "parent_id=$parentId, include=all, limit=200, sort=sort";
-		}
+    if ($q !== '') {
+      $qSafe    = wire('sanitizer')->selectorValue($q);
+      $selector = "title|name%=$qSafe, limit=80, include=all, sort=title";
+    } else {
+      $parentId = (int) wire('input')->get('parent_id');
+      $parentId = $parentId > 0 ? $parentId : 1;
+      $selector = "parent_id=$parentId, include=all, limit=200, sort=sort";
+    }
 
-		$items = [];
-		try {
-			foreach ($pw->find($selector) as $p) {
-				$path = $p->path;
-				$skip = false;
-				foreach ($this->excludePaths as $ex) {
-					if (strpos($path, $ex) !== false) { $skip = true; break; }
-				}
-				$tplName = $p->template ? $p->template->name : '';
-				if (strpos($tplName, 'repeater_') === 0) $skip = true;
-				if ($skip) continue;
+    $items = [];
+    try {
+      foreach ($pw->find($selector) as $p) {
+        $path = $p->path;
+        $skip = false;
+        foreach ($this->excludePaths as $ex) {
+          if (strpos($path, $ex) !== false) { $skip = true; break; }
+        }
+        $tplName = $p->template ? $p->template->name : '';
+        if (strpos($tplName, 'repeater_') === 0) $skip = true;
+        if ($skip) continue;
 
-				$items[] = [
-					'id'          => $p->id,
-					'name'        => (string) $p->get('title|name'),
-					'path'        => $path,
-					'hasChildren' => $p->numChildren > 0,
-				];
-			}
-		} catch (\Exception $e) { /* silent */ }
+        $items[] = [
+          'id'          => $p->id,
+          'name'        => (string) $p->get('title|name'),
+          'path'        => $path,
+          'hasChildren' => $p->numChildren > 0,
+        ];
+      }
+    } catch (\Exception $e) { /* silent */ }
 
-		return json_encode(['items' => $items]);
-	}
+    return json_encode(['items' => $items]);
+  }
 
-	// ── Modal HTML + CSS + JS ────────────────────────────────────────
+  // ── Modal HTML + CSS + JS ────────────────────────────────────────
 
-	/**
-	 * Render the picker modal. Called automatically by the Start editor JS
-	 * via new StartPagePicker(url, callback).open() — the modal is injected
-	 * into the DOM on first use rather than on page load.
-	 *
-	 * This method is kept for standalone / external use:
-	 *   echo $picker->renderModal();
-	 */
-	public function renderModal(): string
-	{
-		$baseUrlJ = json_encode($this->baseUrl);
-		$modalId  = $this->modalId;
-		$treeId   = $this->treeId;
-		$searchId = $this->searchId;
-		$closeId  = $this->closeId;
+  /**
+   * Render the picker modal. Called automatically by the Start editor JS
+   * via new StartPagePicker(url, callback).open() — the modal is injected
+   * into the DOM on first use rather than on page load.
+   *
+   * This method is kept for standalone / external use:
+   *   echo $picker->renderModal();
+   */
+  public function renderModal(): string
+  {
+    $baseUrlJ    = json_encode($this->baseUrl);
+    $modalId     = $this->modalId;
+    $treeId      = $this->treeId;
+    $searchId    = $this->searchId;
+    $closeId     = $this->closeId;
+    $tSelectPage = self::t('select_page');
+    $tSearchPages= self::t('search_pages');
+    $tLoading    = self::t('loading');
 
-		return <<<HTML
+    return <<<HTML
 <style>
 /* StartPagePicker modal — PW CSS custom properties for light/dark theme */
 #{$modalId}{display:none;position:fixed;inset:0;z-index:99999;background:var(--pw-modal-color,rgba(0,0,0,.45));align-items:center;justify-content:center}
@@ -1269,16 +1674,16 @@ class StartPagePicker
 <div id="{$modalId}">
   <div id="ppk-box">
     <div id="ppk-head">
-      Select a page
+      {$tSelectPage}
       <button id="{$closeId}">&#215;</button>
     </div>
     <div id="ppk-search">
-      <input type="text" id="{$searchId}" placeholder="Search pages…" autocomplete="off">
+      <input type="text" id="{$searchId}" placeholder="{$tSearchPages}" autocomplete="off">
     </div>
-    <div id="{$treeId}"><div class="ppk-loading">Loading…</div></div>
+    <div id="{$treeId}"><div class="ppk-loading">{$tLoading}</div></div>
   </div>
 </div>
 
 HTML;
-	}
+  }
 }
