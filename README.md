@@ -16,7 +16,9 @@ Personal quick-access dashboard for the ProcessWire admin. Replaces the default 
 
 ## Supported languages
 
-The editor interface is fully translated into: English, Russian, German, French, Spanish, Polish, Ukrainian, Italian, Dutch, Portuguese, Chinese, Japanese.
+The editor interface is fully translated into 20 languages: English, Russian, German, French, Spanish, Polish, Ukrainian, Italian, Dutch, Portuguese, Chinese, Japanese, Turkish, Czech, Finnish, Korean, Hindi, Hebrew, Arabic, Hungarian.
+
+RTL layout (right-to-left) is applied automatically when Hebrew or Arabic is selected.
 
 The active language is selected under **Modules → Start → Admin language**.
 

@@ -1,12 +1,19 @@
 # Changelog
 
+## 1.1.1
+
+### Added
+- Hungarian translation (20 languages total)
+
 ## 1.1.0
 
 ### Added
 - Multilingual UI — all editor labels are now fully translated: *+ Add link*, *Add group*, *Remove*, *Remove group*, *Browse pages*, *Select a page*, *Select icon*, *Columns*, *Search pages…*, *Loading…*
-- New translation keys added to all supported languages: English, Russian, German, French, Spanish, Polish, Ukrainian, Italian, Dutch, Portuguese, Chinese, Japanese
+- New translation keys added to all supported languages: `add_link`, `add_group`, `remove`, `remove_group`, `browse_page`, `select_page`, `select_icon`, `columns`, `search_pages`, `loading`
 - `window.stI18n` object injected into the editor page — all JS components read labels from it at runtime
 - PagePicker modal header, search placeholder, and loading indicator now respect the configured admin language
+- 7 new languages: Turkish, Czech, Finnish, Korean, Hindi, Hebrew, Arabic (19 total)
+- RTL layout support for Hebrew and Arabic — editor flex directions, indentation, and text alignment automatically mirror when an RTL language is active
 
 ## 1.0.0
 
