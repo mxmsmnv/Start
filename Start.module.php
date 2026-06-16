@@ -9,7 +9,7 @@
  *
  * Bundled helper: PagePicker — modal page-tree picker for the URL field.
  *
- * @author  Maxim Semenov <maxim@smnv.org>
+ * @author  Maxim Semenov <maxim@smnv.org> (smnv.org)
  * @link    https://github.com/mxmsmnv/Start
  */
 class Start extends Process implements Module, ConfigurableModule {
@@ -20,7 +20,7 @@ class Start extends Process implements Module, ConfigurableModule {
       'summary'    => 'Personal quick-access dashboard with visual link editor.',
       'version'    => 111,
       'author'     => 'Maxim Semenov',
-      'href'       => 'https://github.com/mxmsmnv/Start',
+      'href'       => 'https://smnv.org',
       'icon'       => 'bookmark',
       'requires'   => 'ProcessWire>=3.0.0',
       'page'       => [
