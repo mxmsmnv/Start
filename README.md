@@ -2,6 +2,8 @@
 
 Personal quick-access dashboard for the ProcessWire admin. Replaces the default home screen with a configurable grid of links to the pages and modules you use most.
 
+If this project helps your work, consider supporting future development: [GitHub Sponsors](https://github.com/sponsors/mxmsmnv) or [smnv.org/sponsor](https://smnv.org/sponsor/).  
+
 ## Features
 
 - **Two view modes** — list and icon grid, preference saved in `localStorage`
