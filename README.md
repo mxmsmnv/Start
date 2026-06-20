@@ -2,6 +2,8 @@
 
 Personal quick-access dashboard for the ProcessWire admin. Replaces the default home screen with a configurable grid of links to the pages and modules you use most.
 
+![Start](assets/Start.png)
+
 **Author:** Maxim Semenov  
 **Website:** [smnv.org](https://smnv.org)  
 **Email:** [maxim@smnv.org](mailto:maxim@smnv.org)
